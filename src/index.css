@@ -26,3 +26,20 @@
 .animate-slideUp {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+.dark-card{
+
+background:#1f2937;
+
+color:white;
+
+}
+
+.dark-input{
+
+background:#374151;
+
+color:white;
+
+border-color:#555;
+
+}

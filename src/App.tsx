@@ -19,6 +19,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [darkMode, setDarkMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Data state from Express backend
@@ -72,10 +73,17 @@ export default function App() {
         setAuthChecking(false);
       }
     };
+    const savedTheme = localStorage.getItem("theme");
 
+    if (savedTheme === "dark") {
+      setDarkMode(true);
+    }
     initAuth();
     loadAppData();
   }, []);
+  useEffect(() => {
+    localStorage.setItem("theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
 
   const handleAuthSuccess = (user: User) => {
     setCurrentUser(user);
@@ -310,7 +318,13 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans overflow-x-hidden">
+    <div
+      className={`min-h-screen flex flex-col font-sans overflow-x-hidden ${
+      darkMode
+        ? "bg-slate-900 text-white"
+        : "bg-slate-50 text-slate-900"
+      }`}
+    >
       
       {/* Navbar */}
       <Navbar
@@ -320,6 +334,8 @@ export default function App() {
         onLogout={handleLogout}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
       />
 
       {/* Main Body */}
