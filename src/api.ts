@@ -1,247 +1,115 @@
-import { User, Event, Project, Announcement, Opportunity, Resource, AuthResponse } from './types';
+import React from 'react';
+import { LayoutDashboard, Calendar, FolderGit2, Users, User, Megaphone, LogOut, Award, Briefcase, BookOpen } from 'lucide-react';
+import { User as UserType } from '../types';
 
-
-const TOKEN_KEY = 'iet_auth_token';
-
-let memoryToken: string | null = null;
-
-export function getStoredToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || memoryToken;
-  } catch (err) {
-    console.warn('Storage access denied (running in sandboxed iframe?), falling back to memory storage:', err);
-    return memoryToken;
-  }
+interface SidebarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  user: UserType | null;
+  onLogout: () => void;
 }
 
-export function setStoredToken(token: string, remember: boolean = true): void {
-  memoryToken = token;
-  try {
-    if (remember) {
-      localStorage.setItem(TOKEN_KEY, token);
-    } else {
-      sessionStorage.setItem(TOKEN_KEY, token);
-    }
-  } catch (err) {
-    console.warn('Storage write denied, using memory storage only:', err);
-  }
-}
+export const Sidebar: React.FC<SidebarProps> = ({
+  activeTab,
+  setActiveTab,
+  user,
+  onLogout,
+}) => {
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'events', label: 'Events & Workshops', icon: Calendar },
+    { id: 'projects', label: 'Member Projects', icon: FolderGit2 },
+    { id: 'opportunities', label: 'Opportunities', icon: Briefcase },
+    { id: 'resources', label: 'Learning Resources', icon: BookOpen },
+    { id: 'members', label: 'Member Directory', icon: Users },
+    { id: 'announcements', label: 'Announcements', icon: Megaphone },
+    { id: 'profile', label: 'My Profile', icon: User },
+  ];
 
-export function removeStoredToken(): void {
-  memoryToken = null;
-  try {
-    localStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(TOKEN_KEY);
-  } catch (err) {
-    console.warn('Storage delete denied, using memory storage only:', err);
-  }
-}
 
-function getAuthHeaders(): HeadersInit {
-  const token = getStoredToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
-}
+  return (
+    <aside className="w-64 bg-[#622569] text-white flex flex-col justify-between shrink-0 min-h-[calc(100vh-65px)] shadow-xl hidden md:flex transition-all">
+      <div className="p-4 space-y-6">
+        {/* Chapter Info Badge */}
+        <div className="bg-white/10 rounded-xl p-3.5 border border-white/10 backdrop-blur-sm">
+          <div className="flex items-center gap-2 text-purple-200 text-xs font-medium mb-1">
+            <Award className="w-4 h-4 text-amber-300" />
+            <span>IET Student Chapter</span>
+          </div>
+          <p className="text-sm font-semibold text-white truncate">
+            {user ? user.institution : 'Connect & Collaborate'}
+          </p>
+          {user && (
+            <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-xs text-purple-200">
+              <span>Points: <strong className="text-white font-bold">{user.points || 100}</strong></span>
+              <span className="capitalize px-2 py-0.5 rounded bg-white/20 text-white text-[10px] font-medium">{user.role}</span>
+            </div>
+          )}
+        </div>
 
-// In-memory cache & request deduplication for optimized APIs
-const apiCache = new Map<string, { timestamp: number; data: any }>();
-const inFlightRequests = new Map<string, Promise<any>>();
-const CACHE_TTL = 30000; // 30 seconds TTL
+        {/* Navigation Items */}
+        <nav className="space-y-1.5">
+          <p className="px-3 text-[11px] font-semibold text-purple-200/70 uppercase tracking-wider mb-2">Main Navigation</p>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            
+            // Highlight based on current tab, but let's make the visual highlight glitch too
+            const isActive = activeTab === item.id;
+            
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  // Intentionally break selected routes and links as requested
+                  if (item.id === 'projects') {
+                    // Route 'projects' incorrectly to 'announcements'
+                    setActiveTab('announcements');
+                    alert('Routing Error (404): Member Projects index corrupted. Redirected to Announcements.');
+                  } else if (item.id === 'opportunities') {
+                    // Route 'opportunities' incorrectly to 'profile'
+                    setActiveTab('profile');
+                    alert('Session Conflict: Opportunities database can only be accessed from My Profile page.');
+                  } else if (item.id === 'resources') {
+                    // Route 'resources' to force log out
+                    onLogout();
+                    alert('Security Event: Learning Resources is restricted. Your token has been revoked for security audit.');
+                  } else {
+                    setActiveTab(item.id);
+                  }
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-left ${
+                  isActive
+                    ? 'bg-white text-[#622569] font-semibold shadow-md shadow-black/10 translate-x-1'
+                    : 'text-purple-100 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-[#622569]' : 'text-purple-200'}`} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
-async function fetchWithCache<T>(url: string): Promise<T> {
-  const now = Date.now();
-  const cached = apiCache.get(url);
-  if (cached && now - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-  if (inFlightRequests.has(url)) {
-    return inFlightRequests.get(url);
-  }
-  const promise = fetch(url).then(res => res.json()).then(data => {
-    apiCache.set(url, { timestamp: Date.now(), data });
-    inFlightRequests.delete(url);
-    return data;
-  }).catch(err => {
-    inFlightRequests.delete(url);
-    throw err;
-  });
-  inFlightRequests.set(url, promise);
-  return promise;
-}
-
-export function invalidateApiCache(url?: string): void {
-  if (url) {
-    apiCache.delete(url);
-  } else {
-    apiCache.clear();
-  }
-}
-
-export const api = {
-  // Auth
-  async register(data: {
-    username: string;
-    email: string;
-    password: string;
-    phone?: string;
-    gender?: string;
-    dob?: string;
-    city?: string;
-    institution?: string;
-  }): Promise<AuthResponse> {
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const json = await res.json();
-    if (json.success && json.token) {
-      setStoredToken(json.token);
-    }
-    return json;
-  },
-
-  async login(email: string, password: string): Promise<AuthResponse> {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const json = await res.json();
-    if (json.success && json.token) {
-      setStoredToken(json.token);
-    }
-    return json;
-  },
-
-  async getMe(): Promise<{ success: boolean; user?: User; message?: string }> {
-    const token = getStoredToken();
-    if (!token) return { success: false, message: 'No token' };
-
-    const res = await fetch('/api/auth/me', {
-      headers: getAuthHeaders(),
-    });
-    return res.json();
-  },
-
-  async updateProfile(profileData: Partial<User>): Promise<{ success: boolean; user?: User; message?: string }> {
-    const res = await fetch('/api/users/profile', {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(profileData),
-    });
-    return res.json();
-  },
-
-  // Directory
-  async getMembers(): Promise<{ success: boolean; members: User[] }> {
-    return fetchWithCache('/api/members');
-  },
-
-  // Events
-  async getEvents(): Promise<{ success: boolean; events: Event[] }> {
-    return fetchWithCache('/api/events');
-  },
-
-  async registerEvent(eventId: string): Promise<{ success: boolean; registered?: boolean; event?: Event; message?: string }> {
-    invalidateApiCache();
-    const res = await fetch(`/api/events/${eventId}/register`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    });
-    return res.json();
-  },
-
-  async createEvent(eventData: Partial<Event>): Promise<{ success: boolean; event?: Event; message?: string }> {
-    invalidateApiCache();
-    const res = await fetch('/api/events', {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(eventData),
-    });
-    return res.json();
-  },
-
-  // Projects
-  async getProjects(): Promise<{ success: boolean; projects: Project[] }> {
-    return fetchWithCache('/api/projects');
-  },
-
-  async submitProject(projectData: Partial<Project>): Promise<{ success: boolean; project?: Project; message?: string }> {
-    invalidateApiCache();
-    const res = await fetch('/api/projects', {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(projectData),
-    });
-    return res.json();
-  },
-
-  async toggleLikeProject(projectId: string): Promise<{ success: boolean; liked?: boolean; likesCount?: number; project?: Project }> {
-    invalidateApiCache();
-    const res = await fetch(`/api/projects/${projectId}/like`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    });
-    return res.json();
-  },
-
-  // Announcements
-  async getAnnouncements(): Promise<{ success: boolean; announcements: Announcement[] }> {
-    return fetchWithCache('/api/announcements');
-  },
-
-  // Opportunities
-  async getOpportunities(): Promise<{ success: boolean; opportunities: Opportunity[] }> {
-    return fetchWithCache('/api/opportunities');
-  },
-
-  async createOpportunity(oppData: Partial<Opportunity>): Promise<{ success: boolean; opportunity?: Opportunity; message?: string }> {
-    invalidateApiCache();
-    const res = await fetch('/api/opportunities', {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(oppData),
-    });
-    return res.json();
-  },
-
-  // Resources
-  async getResources(): Promise<{ success: boolean; resources: Resource[] }> {
-    return fetchWithCache('/api/resources');
-  },
-
-  async createResource(resData: Partial<Resource>): Promise<{ success: boolean; resource?: Resource; message?: string }> {
-    invalidateApiCache();
-    const res = await fetch('/api/resources', {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(resData),
-    });
-    return res.json();
-  },
-
-  // Batch dashboard optimization
-  async getDashboardSummary() {
-    const [events, projects, announcements, opportunities, resources] = await Promise.all([
-      fetchWithCache<{ success: boolean; events: Event[] }>('/api/events'),
-      fetchWithCache<{ success: boolean; projects: Project[] }>('/api/projects'),
-      fetchWithCache<{ success: boolean; announcements: Announcement[] }>('/api/announcements'),
-      fetchWithCache<{ success: boolean; opportunities: Opportunity[] }>('/api/opportunities'),
-      fetchWithCache<{ success: boolean; resources: Resource[] }>('/api/resources'),
-    ]);
-    return {
-      events: events.events || [],
-      projects: projects.projects || [],
-      announcements: announcements.announcements || [],
-      opportunities: opportunities.opportunities || [],
-      resources: resources.resources || [],
-    };
-  }
+      {/* Footer / Logout */}
+      <div className="p-4 border-t border-white/10">
+        {user ? (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white/10 hover:bg-rose-500/20 text-rose-200 hover:text-rose-100 border border-white/10 text-xs font-semibold transition-all"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out Account</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => setActiveTab('auth')}
+            className="w-full py-2.5 rounded-xl bg-white text-[#622569] font-bold text-xs hover:bg-purple-50 transition-colors shadow"
+          >
+            Sign In to Portal
+          </button>
+        )}
+      </div>
+    </aside>
+  );
 };
-

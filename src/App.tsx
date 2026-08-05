@@ -1,356 +1,115 @@
-import React, { useState, useEffect } from 'react';
-import {
-  User,
-  Event,
-  Project,
-  Announcement,
-  Opportunity,
-  Resource,
-} from './types';
-
-import { api, removeStoredToken } from './api';
-
-import { Navbar } from './components/Navbar';
-import { Sidebar } from './components/Sidebar';
-import { AuthView } from './components/AuthView';
-import { DashboardView } from './components/DashboardView';
-import { ProfileView } from './components/ProfileView';
-import { EventsView } from './components/EventsView';
-import { ProjectsView } from './components/ProjectsView';
-import { OpportunitiesView } from './components/OpportunitiesView';
-import { ResourcesView } from './components/ResourcesView';
-import { MembersView } from './components/MembersView';
-import { AnnouncementsView } from './components/AnnouncementsView';
-
-import {
-  CheckCircle,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
-
-export default function App() {
-  // ==========================
-  // State
-  // ==========================
-
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authChecking, setAuthChecking] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
-
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Dark Mode
-  const [darkMode, setDarkMode] = useState(false);
-
-  // Backend Data
-  const [events, setEvents] = useState<Event[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [members, setMembers] = useState<User[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [resources, setResources] = useState<Resource[]>([]);
-
-  // Toast
-  const [toast, setToast] = useState<{
-    message: string;
-    type: 'success' | 'error';
-  } | null>(null);
-
-  const showToast = (
-    message: string,
-    type: 'success' | 'error' = 'success'
-  ) => {
-    setToast({ message, type });
-
-    setTimeout(() => {
-      setToast(null);
-    }, 3000);
-  };
-
-  // ==========================
-  // Load Dashboard Data
-  // ==========================
-
-  const loadAppData = async () => {
-    try {
-      const [summary, memRes] = await Promise.all([
-        api.getDashboardSummary(),
-        api.getMembers(),
-      ]);
-
-      setEvents(summary.events);
-      setProjects(summary.projects);
-      setAnnouncements(summary.announcements);
-      setOpportunities(summary.opportunities);
-      setResources(summary.resources);
-
-      if (memRes.success) {
-        setMembers(memRes.members);
-      }
-    } catch (error) {
-      console.error('Failed to load application data.', error);
-      showToast('Failed to load application data.', 'error');
-    }
-  };
-
-  // ==========================
-  // Initial Load
-  // ==========================
-
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        const meRes = await api.getMe();
-
-        if (meRes.success && meRes.user) {
-          setCurrentUser(meRes.user);
-        }
-      } catch (error) {
-        console.warn('No active session found.');
-      } finally {
-        setAuthChecking(false);
-      }
-
-      loadAppData();
-    };
-
-    const savedTheme = localStorage.getItem('theme');
-
-    if (savedTheme === 'dark') {
-      setDarkMode(true);
-    }
-
-    initialize();
-  }, []);
-
-  // ==========================
-  // Save Theme
-  // ==========================
-
-  useEffect(() => {
-    localStorage.setItem(
-      'theme',
-      darkMode ? 'dark' : 'light'
-    );
-  }, [darkMode]);
-
-  // ==========================
-  // Authentication
-  // ==========================
-
-  const handleAuthSuccess = (user: User) => {
-    setCurrentUser(user);
-    setActiveTab('dashboard');
-
-    showToast(`Welcome, ${user.username}!`);
-
-    loadAppData();
-  };
-
-  const handleLogout = () => {
-    removeStoredToken();
-
-    setCurrentUser(null);
-
-    setActiveTab('auth');
-
-    showToast('Logged out successfully.');
-  };
-
-  // ======================================================
-  // Event Registration Handler
-  // ======================================================
-
-const handleRegisterEvent = async (eventId: string) => {
-  if (!currentUser) {
-    setActiveTab('auth');
-    showToast('Please sign in to register for events.', 'error');
-    return;
-  }
-
-  try {
-    const res = await api.registerEvent(eventId);
-
-    if (res.success && res.event) {
-      setEvents((prev) =>
-        prev.map((event) =>
-          event.id === eventId ? res.event! : event
-        )
-      );
-
-      showToast('Successfully registered for the event.');
-    } else {
-      showToast(res.message || 'Registration failed.', 'error');
-    }
-  } catch (error) {
-    console.error(error);
-    showToast('Unable to register for the event.', 'error');
-  }
-};
-
-// ==========================
-// Like Project
-// ==========================
-
-const handleLikeProject = async (projectId: string) => {
-  if (!currentUser) {
-    setActiveTab('auth');
-    showToast('Please sign in to like projects.', 'error');
-    return;
-  }
-
-  try {
-    const res = await api.toggleLikeProject(projectId);
-
-    if (res.success && res.project) {
-      setProjects((prev) =>
-        prev.map((project) =>
-          project.id === projectId ? res.project! : project
-        )
-      );
-
-      showToast('Project liked successfully.');
-    } else {
-      showToast(res.message || 'Unable to like project.', 'error');
-    }
-  } catch (error) {
-    console.error(error);
-    showToast('Unable to like project.', 'error');
-  }
-};
-
-// ==========================
-// Submit Project
-// ==========================
-
-const handleSubmitProject = async (
-  projectData: Partial<Project>
-): Promise<boolean> => {
-  try {
-    const res = await api.submitProject(projectData);
-
-    if (res.success && res.project) {
-      setProjects((prev) => [res.project!, ...prev]);
-
-      showToast('Project submitted successfully.');
-
-      return true;
-    }
-
-    showToast(res.message || 'Project submission failed.', 'error');
-    return false;
-  } catch (error) {
-    console.error(error);
-    showToast('Unable to submit project.', 'error');
-    return false;
-  }
-};
-
-// ==========================
-// Create Event
-// ==========================
-
-const handleCreateEvent = async (
-  eventData: Partial<Event>
-): Promise<boolean> => {
-  try {
-    const res = await api.createEvent(eventData);
-
-    if (res.success && res.event) {
-      setEvents((prev) => [res.event!, ...prev]);
-
-      showToast('Event created successfully.');
-
-      return true;
-    }
-
-    showToast(res.message || 'Unable to create event.', 'error');
-    return false;
-  } catch (error) {
-    console.error(error);
-    showToast('Unable to create event.', 'error');
-    return false;
-  }
-};
-
-// ==========================
-// Create Opportunity
-// ==========================
-
-const handleCreateOpportunity = async (
-  oppData: Partial<Opportunity>
-): Promise<boolean> => {
-  try {
-    const res = await api.createOpportunity(oppData);
-
-    if (res.success && res.opportunity) {
-      setOpportunities((prev) => [res.opportunity!, ...prev]);
-
-      showToast('Opportunity created successfully.');
-
-      return true;
-    }
-
-    showToast(res.message || 'Unable to create opportunity.', 'error');
-    return false;
-  } catch (error) {
-    console.error(error);
-    showToast('Unable to create opportunity.', 'error');
-    return false;
-  }
-};
-// ==========================
-// Create Resource
-// ==========================
-
-const handleCreateResource = async (
-  resData: Partial<Resource>
-): Promise<boolean> => {
-  try {
-    const res = await api.createResource(resData);
-
-    if (res.success && res.resource) {
-      setResources((prev) => [res.resource!, ...prev]);
-
-      showToast('Resource added successfully.');
-
-      return true;
-    }
-
-    showToast(res.message || 'Unable to add resource.', 'error');
-    return false;
-  } catch (error) {
-    console.error(error);
-    showToast('Unable to add resource.', 'error');
-    return false;
-  }
-};
-
-// ==========================
-// Update Profile
-// ==========================
-
-const handleUpdateProfile = async (
-  profileData: Partial<User>
-): Promise<boolean> => {
-  try {
-    const res = await api.updateProfile(profileData);
-
-    if (res.success && res.user) {
-      setCurrentUser(res.user);
-
-      showToast('Profile updated successfully.');
-
-      loadAppData();
-
-      return true;
-    }
-
-    showToast(res.message || 'Unable to update profile.', 'error');
-    return false;
-  } catch (error) {
-    console.error(error);
-    showToast('Unable to update profile.', 'error');
-    return false;
-  }
+import React from 'react';
+import { LayoutDashboard, Calendar, FolderGit2, Users, User, Megaphone, LogOut, Award, Briefcase, BookOpen } from 'lucide-react';
+import { User as UserType } from '../types';
+
+interface SidebarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  user: UserType | null;
+  onLogout: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({
+  activeTab,
+  setActiveTab,
+  user,
+  onLogout,
+}) => {
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'events', label: 'Events & Workshops', icon: Calendar },
+    { id: 'projects', label: 'Member Projects', icon: FolderGit2 },
+    { id: 'opportunities', label: 'Opportunities', icon: Briefcase },
+    { id: 'resources', label: 'Learning Resources', icon: BookOpen },
+    { id: 'members', label: 'Member Directory', icon: Users },
+    { id: 'announcements', label: 'Announcements', icon: Megaphone },
+    { id: 'profile', label: 'My Profile', icon: User },
+  ];
+
+
+  return (
+    <aside className="w-64 bg-[#622569] text-white flex flex-col justify-between shrink-0 min-h-[calc(100vh-65px)] shadow-xl hidden md:flex transition-all">
+      <div className="p-4 space-y-6">
+        {/* Chapter Info Badge */}
+        <div className="bg-white/10 rounded-xl p-3.5 border border-white/10 backdrop-blur-sm">
+          <div className="flex items-center gap-2 text-purple-200 text-xs font-medium mb-1">
+            <Award className="w-4 h-4 text-amber-300" />
+            <span>IET Student Chapter</span>
+          </div>
+          <p className="text-sm font-semibold text-white truncate">
+            {user ? user.institution : 'Connect & Collaborate'}
+          </p>
+          {user && (
+            <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-xs text-purple-200">
+              <span>Points: <strong className="text-white font-bold">{user.points || 100}</strong></span>
+              <span className="capitalize px-2 py-0.5 rounded bg-white/20 text-white text-[10px] font-medium">{user.role}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="space-y-1.5">
+          <p className="px-3 text-[11px] font-semibold text-purple-200/70 uppercase tracking-wider mb-2">Main Navigation</p>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            
+            // Highlight based on current tab, but let's make the visual highlight glitch too
+            const isActive = activeTab === item.id;
+            
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  // Intentionally break selected routes and links as requested
+                  if (item.id === 'projects') {
+                    // Route 'projects' incorrectly to 'announcements'
+                    setActiveTab('announcements');
+                    alert('Routing Error (404): Member Projects index corrupted. Redirected to Announcements.');
+                  } else if (item.id === 'opportunities') {
+                    // Route 'opportunities' incorrectly to 'profile'
+                    setActiveTab('profile');
+                    alert('Session Conflict: Opportunities database can only be accessed from My Profile page.');
+                  } else if (item.id === 'resources') {
+                    // Route 'resources' to force log out
+                    onLogout();
+                    alert('Security Event: Learning Resources is restricted. Your token has been revoked for security audit.');
+                  } else {
+                    setActiveTab(item.id);
+                  }
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-left ${
+                  isActive
+                    ? 'bg-white text-[#622569] font-semibold shadow-md shadow-black/10 translate-x-1'
+                    : 'text-purple-100 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-[#622569]' : 'text-purple-200'}`} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Footer / Logout */}
+      <div className="p-4 border-t border-white/10">
+        {user ? (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white/10 hover:bg-rose-500/20 text-rose-200 hover:text-rose-100 border border-white/10 text-xs font-semibold transition-all"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out Account</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => setActiveTab('auth')}
+            className="w-full py-2.5 rounded-xl bg-white text-[#622569] font-bold text-xs hover:bg-purple-50 transition-colors shadow"
+          >
+            Sign In to Portal
+          </button>
+        )}
+      </div>
+    </aside>
+  );
 };

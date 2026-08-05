@@ -10,7 +10,6 @@ interface AuthViewProps {
 export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   const [isLoginView, setIsLoginView] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Login state
@@ -52,22 +51,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     }
   };
 
-  const phoneRegex = /^\+\d{1,3}\s?\d{6,14}$/;
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regData.username || !regData.email || !regData.password) {
       setErrorMsg('Username, Email and Password are required.');
       return;
-    }
-    if (regData.phone && !phoneRegex.test(regData.phone)) {
-
-      setErrorMsg(
-
-      "Phone number must include a country code (Example: +91 9876543210)"
-
-      );
-
-    return;
     }
     setErrorMsg(null);
     setLoading(true);
@@ -138,15 +126,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div
-      className={`min-h-[calc(100vh-65px)] py-12 px-4 flex items-center justify-center
-
-      ${darkMode
-
-      ? "bg-gray-900"
-
-      : "bg-gradient-to-br from-[#622569] via-[#4a1b50] to-[#2b0f30]"}`}
-    >
+    <div className="min-h-[calc(100vh-65px)] bg-gradient-to-br from-[#622569] via-[#4a1b50] to-[#2b0f30] py-12 px-4 flex items-center justify-center">
       <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-white/20">
         
         {/* Auth Header */}

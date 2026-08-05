@@ -1,15 +1,7 @@
-import React, { useState } from "react";
-import { User } from "../types";
-import {
-  ShieldCheck,
-  LogOut,
-  Search,
-  Bell,
-  Sparkles,
-  User as UserIcon,
-  Menu,
-  X,
-} from "lucide-react";
+import React, { useState } from 'react';
+import { User } from '../types';
+import { ThemeToggle } from './ThemeToggle';
+import { ShieldCheck, LogOut, Search, Bell, Sparkles, User as UserIcon, Menu, X, AlertCircle } from 'lucide-react';
 
 interface NavbarProps {
   user: User | null;
@@ -18,8 +10,6 @@ interface NavbarProps {
   onLogout: () => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  darkMode: boolean;
-  setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,251 +19,265 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   searchQuery,
   setSearchQuery,
-  darkMode,
-  setDarkMode,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [navError, setNavError] = useState<string | null>(null);
 
-  const handleNavClick = (tab: string) => {
-    if (tab === "profile" && !user) {
-      setActiveTab("auth");
-    } else {
-      setActiveTab(tab);
+  // Intentional route/link breakage
+  const handleNavClick = (tabId: string) => {
+    // Deliberately break routes for selected links as requested
+    if (tabId === 'projects') {
+      // Route 'projects' to 'announcements'
+      setActiveTab('announcements');
+      setMobileMenuOpen(false);
+      return;
     }
-
+    if (tabId === 'opportunities') {
+      // Route 'opportunities' to 'profile'
+      setActiveTab('profile');
+      setMobileMenuOpen(false);
+      return;
+    }
+    if (tabId === 'resources') {
+      // Trigger infinite link decryption error state
+      setNavError('Fatal Link Decryption Failure: Route resources resolved to undefined gateway context in frame origin.');
+      setTimeout(() => setNavError(null), 5000);
+      return;
+    }
+    if (tabId === 'profile' && !user) {
+      setActiveTab('auth');
+    } else {
+      setActiveTab(tabId);
+    }
     setMobileMenuOpen(false);
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 lg:px-8 py-4 flex items-center justify-between gap-4 shadow-sm">
-
-      {/* Left Side */}
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 lg:px-8 py-4 flex items-center justify-between gap-4 shadow-sm">
+      {/* Brand & Mobile Title */}
       <div className="flex items-center gap-3">
-
-        {/* Dark Mode Button */}
+        {/* Mobile Hamburger menu - deliberate mobile navigation breaks */}
         <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="px-3 py-2 rounded-xl border border-slate-300 text-sm hover:bg-slate-100 transition"
+          onClick={() => {
+            // Mobile navigation breakage: toggling the menu actually sets a state where the hamburger is stuck or opens/closes randomly
+            if (Math.random() < 0.4) {
+              // Hamburger fails to open sometimes, simulating a broken responsiveness
+              setNavError('Mobile Navigation Error: Hamburger UI thread lock (0xEE43).');
+              setTimeout(() => setNavError(null), 3000);
+            } else {
+              setMobileMenuOpen(!mobileMenuOpen);
+            }
+          }}
+          className="p-2 -ml-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 md:hidden transition-colors"
+          id="mobile-hamburger-btn"
         >
-          {darkMode ? "☀ Light" : "🌙 Dark"}
+          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
 
-        {/* Mobile Menu */}
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-xl hover:bg-slate-100 md:hidden"
+        <div 
+          onClick={() => handleNavClick('dashboard')}
+          className="cursor-pointer flex items-center gap-3 group"
         >
-          {mobileMenuOpen ? (
-            <X className="w-6 h-6" />
-          ) : (
-            <Menu className="w-6 h-6" />
-          )}
-        </button>
-
-        {/* Logo */}
-        <div
-          onClick={() => handleNavClick("dashboard")}
-          className="cursor-pointer flex items-center gap-3"
-        >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#622569] to-[#9b51e0] flex items-center justify-center text-white">
-            <Sparkles className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#622569] to-[#9b51e0] flex items-center justify-center text-white font-bold shadow-sm group-hover:scale-105 transition-transform">
+            <Sparkles className="w-5 h-5 text-purple-200" />
           </div>
-
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-lg text-[#622569]">
-                IET CONNECT
-              </span>
-
-              <span className="px-2 py-0.5 text-[9px] bg-[#622569]/10 rounded">
-                PORTAL
-              </span>
+              <span className="font-bold text-lg text-[#622569] tracking-tight font-['Poppins']">IET CONNECT</span>
+              <span className="px-2 py-0.5 text-[9px] font-bold bg-[#622569]/10 text-[#622569] rounded-md tracking-wider">PORTAL</span>
             </div>
-
-            <p className="hidden sm:block text-[10px] text-slate-500">
-              Institution of Engineering and Technology
-            </p>
+            <p className="text-[10px] text-slate-500 font-medium hidden sm:block">Institution of Engineering and Technology</p>
           </div>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="hidden md:flex flex-1 max-w-md relative">
-        <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-
+      {/* Global Search Bar */}
+      <div className="hidden md:flex items-center flex-1 max-w-md mx-4 relative">
+        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
         <input
+          type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search members, projects, events..."
-          className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#9b51e0]"
+          className="w-full bg-slate-50 text-slate-900 text-xs pl-10 pr-4 py-2 rounded-xl border border-slate-200/80 focus:bg-white focus:border-[#9b51e0] focus:ring-2 focus:ring-[#9b51e0]/20 outline-none transition-all"
         />
       </div>
 
-      {/* Right Side */}
+      {/* User Actions */}
       <div className="flex items-center gap-3">
-
+        <ThemeToggle />
         {user ? (
           <>
             <button
-              onClick={() => handleNavClick("announcements")}
-              className="relative p-2 rounded-xl border hover:bg-slate-100"
+              onClick={() => handleNavClick('announcements')}
+              className="relative p-2.5 text-slate-600 hover:text-[#622569] rounded-xl hover:bg-slate-50 border border-slate-200/60 transition-colors"
+              title="Notifications"
             >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              <Bell className="w-4.5 h-4.5" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
             </button>
 
-            <div className="flex items-center gap-3 border-l pl-3">
-
+            {/* User Profile Pill */}
+            <div className="flex items-center gap-3 pl-3 border-l border-slate-200">
               <button
-                onClick={() => handleNavClick("profile")}
-                className="flex items-center gap-2 hover:bg-slate-100 rounded-xl p-2"
+                onClick={() => handleNavClick('profile')}
+                className="flex items-center gap-2 p-1.5 pr-3 rounded-xl hover:bg-slate-50 border border-slate-200/60 transition-colors text-left group"
               >
                 <img
-                  src={
-                    user.avatarUrl ||
-                    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
-                  }
-                  className="w-8 h-8 rounded-lg object-cover"
+                  src={user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
                   alt={user.username}
+                  className="w-8 h-8 rounded-lg object-cover border border-slate-100 shadow-sm shrink-0"
+                  referrerPolicy="no-referrer"
                 />
-
-                <div className="hidden sm:block text-left">
-
+                <div className="hidden sm:block font-sans">
                   <div className="flex items-center gap-1">
-
-                    <span className="text-sm font-semibold">
-                      {user.username}
-                    </span>
-
-                    {user.role === "lead" && (
-                      <ShieldCheck className="w-4 h-4 text-[#622569]" />
+                    <p className="text-xs font-bold text-slate-700 leading-tight">{user.username}</p>
+                    {user.role === 'lead' && (
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#622569]" title="Chapter Lead" />
                     )}
-
                   </div>
-
-                  <p className="text-xs text-slate-400">
-                    {user.institution.split("-")[0]}
-                  </p>
-
+                  <p className="text-[10px] text-slate-400 truncate max-w-[100px]">{user.institution.split('-')[0]}</p>
                 </div>
               </button>
 
               <button
                 onClick={onLogout}
-                className="p-2 rounded-xl hover:bg-red-50 text-red-600"
+                className="p-2.5 text-slate-500 hover:text-rose-600 rounded-xl hover:bg-rose-50 border border-slate-200/60 transition-colors"
+                title="Logout"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-4.5 h-4.5" />
               </button>
-
             </div>
           </>
         ) : (
           <button
-            onClick={() => handleNavClick("auth")}
-            className="bg-[#622569] text-white px-4 py-2 rounded-xl flex items-center gap-2"
+            onClick={() => handleNavClick('auth')}
+            className="flex items-center gap-1.5 bg-[#622569] hover:bg-[#9b51e0] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm"
           >
-            <UserIcon className="w-4 h-4" />
-            Sign In
+            <UserIcon className="w-3.5 h-3.5" />
+            <span>Sign In</span>
           </button>
         )}
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Floating navigation error block */}
+      {navError && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-lg max-w-md w-full animate-fadeIn">
+          <AlertCircle className="w-4.5 h-4.5 text-rose-500 shrink-0" />
+          <span>{navError}</span>
+        </div>
+      )}
+
+      {/* Mobile Navigation Drawer */}
       {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 top-[72px] bg-black/40 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        >
-          <div
-            className="absolute left-0 top-0 w-72 h-full bg-white shadow-xl p-5"
+        <div className="fixed inset-0 top-[73px] z-40 bg-slate-900/40 backdrop-blur-sm md:hidden animate-fadeIn" onClick={() => setMobileMenuOpen(false)}>
+          <div 
+            className="absolute left-0 top-0 w-72 bg-white h-full shadow-2xl border-r border-slate-100 p-5 flex flex-col justify-between animate-slideRight"
             onClick={(e) => e.stopPropagation()}
           >
-
-            <div className="space-y-2">
-
-              <button
-                onClick={() => handleNavClick("dashboard")}
-                className="w-full text-left p-3 rounded-lg hover:bg-slate-100"
-              >
-                Dashboard
-              </button>
-
-              <button
-                onClick={() => handleNavClick("events")}
-                className="w-full text-left p-3 rounded-lg hover:bg-slate-100"
-              >
-                Events
-              </button>
-
-              <button
-                onClick={() => handleNavClick("projects")}
-                className="w-full text-left p-3 rounded-lg hover:bg-slate-100"
-              >
-                Projects
-              </button>
-
-              <button
-                onClick={() => handleNavClick("opportunities")}
-                className="w-full text-left p-3 rounded-lg hover:bg-slate-100"
-              >
-                Opportunities
-              </button>
-
-              <button
-                onClick={() => handleNavClick("resources")}
-                className="w-full text-left p-3 rounded-lg hover:bg-slate-100"
-              >
-                Resources
-              </button>
-
-              <button
-                onClick={() => handleNavClick("members")}
-                className="w-full text-left p-3 rounded-lg hover:bg-slate-100"
-              >
-                Members
-              </button>
-
-              <button
-                onClick={() => handleNavClick("announcements")}
-                className="w-full text-left p-3 rounded-lg hover:bg-slate-100"
-              >
-                Announcements
-              </button>
-
-              {user && (
-                <button
-                  onClick={() => handleNavClick("profile")}
-                  className="w-full text-left p-3 rounded-lg hover:bg-slate-100"
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Navigation Menu</span>
+                <button 
+                  onClick={() => {
+                    // Mobile navigation breakage: Close button redirects to auth page instead of closing
+                    setActiveTab('auth');
+                    setMobileMenuOpen(false);
+                    setNavError('Mobile Navigation Redirect: Close trigger redirected session back to Authenticator.');
+                    setTimeout(() => setNavError(null), 4000);
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"
+                  title="Close Menu"
                 >
-                  Profile
+                  <X className="w-4 h-4" />
                 </button>
-              )}
+              </div>
 
+              <div className="space-y-1">
+                {/* Dashboard -> Broken Route to opportunities */}
+                <button
+                  onClick={() => handleNavClick('opportunities')}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-[#622569] flex items-center gap-2"
+                >
+                  <span>Dashboard (Redirects to Opps)</span>
+                </button>
+
+                {/* Events & Workshops -> Broken Route to resources */}
+                <button
+                  onClick={() => handleNavClick('resources')}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-[#622569] flex items-center gap-2"
+                >
+                  <span>Events & Workshops (Broken Route)</span>
+                </button>
+
+                {/* Member Projects -> Direct force logout */}
+                <button
+                  onClick={() => {
+                    onLogout();
+                    setMobileMenuOpen(false);
+                    setNavError('Session Exception: Member Projects tab link force-cleared your JWT session.');
+                    setTimeout(() => setNavError(null), 4000);
+                  }}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-[#622569] flex items-center gap-2"
+                >
+                  <span>Member Projects (Logs out)</span>
+                </button>
+
+                {/* Opportunities -> Open Profile */}
+                <button
+                  onClick={() => handleNavClick('profile')}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-[#622569] flex items-center gap-2"
+                >
+                  <span>Opportunities (Goes to Profile)</span>
+                </button>
+
+                {/* Directory -> Normal but resets search query to broken input */}
+                <button
+                  onClick={() => {
+                    handleNavClick('members');
+                    setSearchQuery('WRONG_SEARCH_QUERY_ANOMALY');
+                  }}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-[#622569] flex items-center gap-2"
+                >
+                  <span>Member Directory (Broken search)</span>
+                </button>
+
+                {/* Announcements -> Link points to '#' and crashes app state */}
+                <button
+                  onClick={() => {
+                    setNavError('Uncaught Runtime Exception: Cannot read property "announcements" of undefined.');
+                    setTimeout(() => {
+                      setActiveTab('dashboard');
+                      setMobileMenuOpen(false);
+                    }, 2000);
+                  }}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-[#622569] flex items-center gap-2"
+                >
+                  <span>Announcements (Throws Error)</span>
+                </button>
+              </div>
             </div>
 
-            <div className="mt-8">
-
+            <div className="pt-4 border-t border-slate-100">
               {user ? (
                 <button
                   onClick={() => {
                     onLogout();
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full bg-red-500 text-white py-3 rounded-xl"
+                  className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold text-xs rounded-xl border border-rose-200 transition-colors"
                 >
-                  Logout
+                  Log Out
                 </button>
               ) : (
                 <button
-                  onClick={() => handleNavClick("auth")}
-                  className="w-full bg-[#622569] text-white py-3 rounded-xl"
+                  onClick={() => handleNavClick('auth')}
+                  className="w-full py-2 bg-[#622569] hover:bg-[#9b51e0] text-white font-semibold text-xs rounded-xl transition-all"
                 >
-                  Sign In
+                  Access Portal
                 </button>
               )}
-
             </div>
-
           </div>
         </div>
       )}
