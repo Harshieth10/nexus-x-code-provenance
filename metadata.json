@@ -1,0 +1,8 @@
+{
+  "name": "Remix IET CONNECT",
+  "description": "Full-stack member portal for IET CONNECT with authentication, member profile management, events registration, and project showcases.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
